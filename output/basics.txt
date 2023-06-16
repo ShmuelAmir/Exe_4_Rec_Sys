@@ -1,0 +1,73 @@
+# 316392323 Shmuel Amir
+# Team: WatsonTeam 
+# Date: 2023-06-05
+# Database name: data/BX-Book-Ratings_hkv1.sql, data/BX-Books_hkv1.sql, data/BX-Users_hkv1.sql
+
+ase name <name>
+3.a) how many users? 278858
+3.b) how many books? 270551
+3.c) how many ratings? 1144627
+3.d) histogram of user-ratings <table(num ratings, num users)>
+ (how many users have rated N times? <number>)
+ 
+   `Book-Rating` count
+           <int> <int>
+ 1             0 59346
+ 2             1  1187
+ 3             2  2033
+ 4             3  4171
+ 5             4  5830
+ 6             5 17912
+ 7             6 16827
+ 8             7 27403
+ 9             8 33184
+10             9 21464
+11            10 20418
+
+3.e) histogram of book-ratings <table(num ratings, num users)>
+ (how many books have been rated N times? <number>)
+ 
+   `Book-Rating`  count
+           <int>  <int>
+ 1             0 245977
+ 2             1   1609
+ 3             2   2500
+ 4             3   5297
+ 5             4   7823
+ 6             5  38553
+ 7             6  27959
+ 8             7  50109
+ 9             8  60895
+10             9  41926
+11            10  48373
+
+3.f) top-10 rated books? <table(name,num ratings)>
+
+   `Book-Title`                                                     rating
+   <chr>                                                             <int>
+ 1 The Lovely Bones: A Novel                                          5787
+ 2 The Da Vinci Code                                                  4108
+ 3 The Red Tent (Bestselling Backlist)                                3134
+ 4 NA                                                                 2800
+ 5 Harry Potter and the Sorcerer's Stone (Harry Potter (Paperback))   2798
+ 6 The Secret Life of Bees                                            2595
+ 7 Wild Animus                                                        2551
+ 8 Divine Secrets of the Ya-Ya Sisterhood: A Novel                    2524
+ 9 Where the Heart Is (Oprah's Book Club (Paperback))                 2402
+10 Girl with a Pearl Earring                                          2219
+
+3.g) top-10 active users? <table(name, num ratings)>
+
+   `User-ID` rating
+       <int>  <int>
+ 1     11676  61839
+ 2     98391  51290
+ 3    153662  16974
+ 4     23902  10475
+ 5    189835   9699
+ 6     76499   9190
+ 7     56399   8717
+ 8    235105   8156
+ 9    171118   7574
+10     63714   7566
+
