@@ -34,17 +34,17 @@ rating_book_counts
 # top-10 books with ratings? histogram of ratings
 top_10_books <- ratings %>%
   group_by(`ISBN`) %>%
-  summarize(rating = sum(`Book-Rating`)) %>%
-  arrange(desc(rating)) %>%
-  head(10) %>%
+  summarize(N = n()) %>%
+  arrange(desc(N)) %>%
+  head(11) %>%
   left_join(books, by="ISBN") %>%
-  select(`Book-Title`, rating)
+  select(`Book-Title`, N) %>%
+  na.omit()
 
 # top-10 users that rated? histogram of ratings
 top_10_users <- ratings %>%
   group_by(`User-ID`) %>%
-  summarize(rating = sum(`Book-Rating`)) %>%
-  arrange(desc(rating)) %>%
+  summarize(N = n()) %>%
+  arrange(desc(N)) %>%
   head(10)
-
 

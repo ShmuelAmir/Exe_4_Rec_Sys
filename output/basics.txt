@@ -43,31 +43,31 @@ ase name <name>
 
 3.f) top-10 rated books? <table(name,num ratings)>
 
-   `Book-Title`                                                     rating
-   <chr>                                                             <int>
- 1 The Lovely Bones: A Novel                                          5787
- 2 The Da Vinci Code                                                  4108
- 3 The Red Tent (Bestselling Backlist)                                3134
- 4 NA                                                                 2800
- 5 Harry Potter and the Sorcerer's Stone (Harry Potter (Paperback))   2798
- 6 The Secret Life of Bees                                            2595
- 7 Wild Animus                                                        2551
- 8 Divine Secrets of the Ya-Ya Sisterhood: A Novel                    2524
- 9 Where the Heart Is (Oprah's Book Club (Paperback))                 2402
-10 Girl with a Pearl Earring                                          2219
+`Book-Title`                                           N
+   <chr>                                              <int>
+ 1 Wild Animus                                         2502
+ 2 The Lovely Bones: A Novel                           1295
+ 3 The Da Vinci Code                                    883
+ 4 Divine Secrets of the Ya-Ya Sisterhood: A Novel      732
+ 5 The Red Tent (Bestselling Backlist)                  723
+ 6 A Painted House                                      647
+ 7 The Secret Life of Bees                              615
+ 8 Snow Falling on Cedars                               614
+ 9 Angels &amp; Demons                                  586
+10 Where the Heart Is (Oprah's Book Club (Paperback))   585
 
 3.g) top-10 active users? <table(name, num ratings)>
 
-   `User-ID` rating
-       <int>  <int>
- 1     11676  61839
- 2     98391  51290
- 3    153662  16974
- 4     23902  10475
- 5    189835   9699
- 6     76499   9190
- 7     56399   8717
- 8    235105   8156
- 9    171118   7574
-10     63714   7566
+   `User-ID`     N
+       <int> <int>
+ 1     11676 13549
+ 2    198711  7521
+ 3    153662  6095
+ 4     98391  5876
+ 5     35859  5828
+ 6    212898  4766
+ 7    278418  4510
+ 8     76352  3356
+ 9    110973  3090
+10    235105  3056
 

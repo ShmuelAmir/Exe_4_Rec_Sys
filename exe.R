@@ -37,26 +37,99 @@ ratings <- ratings %>% semi_join(books, by = "ISBN")
 users <- users %>% semi_join(ratings, by = "User-ID")
 books <- books %>% semi_join(ratings, by = "ISBN")
 
+ratings$`User-ID` <- as.factor(ratings$`User-ID`)
+ratings$ISBN <- as.factor(ratings$ISBN)
 
 # ---------- Create the matrices ---------- #
 
-# similarity matrix - calculate diff between users
-
+# similarity matrix - calculate diff between users שתי מטריצות אחת למשתמשים ואחת לספרים
+U <- 
+  
+I <- 
+  
+  
 # user-item rating matrix - reorganize ratings-df rows = users, cols = books, cells = rating
+M <- sparseMatrix(
+  i = as.integer(ratings$`User-ID`),
+  j = as.integer(ratings$ISBN),
+  x = ratings$`Book-Rating`,
+  dims = c(nlevels(ratings$`User-ID`), nlevels(ratings$ISBN)),
+  dimnames = list(levels(ratings$`User-ID`), levels(ratings$ISBN)),
+)
 
+UI <- new("realRatingMatrix", data = M)
+
+R <- rle(colSums(M>0))
+
+thresh <- 3
+S <- sort(R$lengths[R$values > thresh], decreasing = TRUE)
+
+run <- S[1]
+loc <- grep(names(S[1]), colnames(M))
+
+nonzero.rows <- unique(sort(as.vector(
+  apply(M[, (loc-run):(loc-1)], MARGIN = 2, FUN = function(e) which(e>0))
+)))
+
+M[nonzero.rows, (loc-run):(loc-1)]
+
+ratings.n <- normalize(UI)
+# ratings.n.vec <- as.vector(ratings.n@data)
 
 # ---------- The model ---------- #
 
 # Train a model with holdout (k-fold)
+percent_train <- 0.8
+items_to_keep <- 2
+rating_threshold <- 6 # 3
+n_eval <- 1           # k
+
+eval_sets <- evaluationScheme(
+  data = UI, method = "split",
+  train = percent_train, given = items_to_keep,
+  goodRating = rating_threshold, k = n_eval
+)
+
+# save(eval_sets, UI, M, nonzero.rows, R, ratings, file = "recommender3.rdata")
+
+system.time(
+  eval_recommender <- Recommender(
+    data = getData(eval_sets, "train"),
+    method = "UBCF", parameter = NULL
+  )
+)
+
+# system.time(
+#   eval_recommender <- Recommender(
+#     data = getData(eval_sets, "train"),
+#     method = "IBCF", parameter = NULL # method = IBCF
+#   )
+# )
 
 
-# ---------- Predictions: ---------- #
+# ---------- Predictions: ---------- # לעשות בחלקים לפי חלקים של מטריצת הדמיון
+
+items_to_recommend <- 10
+system.time(
+  eval_prediction <- predict(
+    object = eval_recommender,
+    newdata = getData(eval_sets, "known"),
+    n = items_to_recommend,
+    type = "ratings"
+  )
+)
 
 # get user recommendations for 500 books
 
 # get new book ISBN
 
 # give recommendation - for the user to the new book
+
+
+
+
+
+
 
 
 
