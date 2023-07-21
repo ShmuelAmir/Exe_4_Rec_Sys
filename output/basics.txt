@@ -7,39 +7,39 @@ ase name <name>
 3.a) how many users? 278858
 3.b) how many books? 270551
 3.c) how many ratings? 1144627
+
 3.d) histogram of user-ratings <table(num ratings, num users)>
  (how many users have rated N times? <number>)
  
-   `Book-Rating` count
-           <int> <int>
- 1             0 59346
- 2             1  1187
- 3             2  2033
- 4             3  4171
- 5             4  5830
- 6             5 17912
- 7             6 16827
- 8             7 27403
- 9             8 33184
-10             9 21464
-11            10 20418
+     bin     N
+   <int> <int>
+ 1     1 58973
+ 2     2 12476
+ 3     3  6529
+ 4     4  4247
+ 5     5  3096
+ 6     6  2345
+ 7     7  1706
+ 8     8  1371
+ 9     9  1175
+10    10  1049
 
 3.e) histogram of book-ratings <table(num ratings, num users)>
  (how many books have been rated N times? <number>)
  
-   `Book-Rating`  count
-           <int>  <int>
- 1             0 245977
- 2             1   1609
- 3             2   2500
- 4             3   5297
- 5             4   7823
- 6             5  38553
- 7             6  27959
- 8             7  50109
- 9             8  60895
-10             9  41926
-11            10  48373
+     bin      N
+   <int>  <int>
+ 1     1 196437
+ 2     2  59509
+ 3     3  25893
+ 4     4  14073
+ 5     5   8981
+ 6     6   6091
+ 7     7   4465
+ 8     8   3267
+ 9     9   2572
+10    10   2143
+
 
 3.f) top-10 rated books? <table(name,num ratings)>
 

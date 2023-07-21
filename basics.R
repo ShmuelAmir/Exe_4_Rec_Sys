@@ -17,19 +17,23 @@ dim(users)[1]
 books <- dbGetQuery(mysqlconnection, "SELECT * FROM book_recommendations.`bx-books`;")
 dim(books)[1]
 
-# how many ratings? histograms of ratings (by user/by book)
+# how many ratings? 
 ratings <- dbGetQuery(mysqlconnection, "SELECT * FROM book_recommendations.`bx-book-ratings`;")
 dim(ratings)[1]
 
+# histograms of ratings (by user/by book)
 rating_user_counts <- ratings %>%
-  group_by(`Book-Rating`) %>%
-  summarize(count = n_distinct(`User-ID`))
-rating_user_counts
+  group_by(`User-ID`) %>%
+  summarise(bin = n()) %>%  # bin -> how many time user rates
+  group_by(bin) %>%
+  summarise(N = n())        # N   -> how many people give number of ratings
 
 rating_book_counts <- ratings %>%
-  group_by(`Book-Rating`) %>%
-  summarize(count = n_distinct(`ISBN`)) 
-rating_book_counts
+  group_by(`ISBN`) %>%
+  summarise(bin = n()) %>%
+  group_by(bin) %>%
+  summarise(N = n())
+
 
 # top-10 books with ratings? histogram of ratings
 top_10_books <- ratings %>%
