@@ -52,3 +52,8 @@ top_10_users <- ratings %>%
   arrange(desc(N)) %>%
   head(10)
 
+# save what we need in the main file
+save(users, books, ratings, file = "recommender3.rdata")
+
+rm(mysqlconnection, users, books, ratings, rating_user_counts, rating_book_counts, top_10_users, top_10_books)
+gc()

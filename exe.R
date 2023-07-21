@@ -4,24 +4,10 @@ library(ggplot2)
 library(recommenderlab)
 library(stringr)
 library(crayon)
-library(RMySQL)
-library(sqldf)
 
 
-# Load the data from MySQL
-mysqlconnection = dbConnect(RMySQL::MySQL(),
-                            dbname='book_recommendations',
-                            host='localhost',
-                            port=3306,
-                            user='root',
-                            password='password')
-
-users <- dbGetQuery(mysqlconnection, "SELECT * FROM book_recommendations.`bx-users`;")
-books <- dbGetQuery(mysqlconnection, "SELECT * FROM book_recommendations.`bx-books`;")
-ratings <- dbGetQuery(mysqlconnection, "SELECT * FROM book_recommendations.`bx-book-ratings`;")
-
-rm(mysqlconnection)
-gc()
+# Load the data from the saved file
+load("recommender3.rdata")
 
 
 # ---------- Clean the data ---------- #
@@ -30,7 +16,7 @@ gc()
 books <- books %>%
   select(-starts_with("Image"))
 
-# remove non valid isbn
+# remove non valid ISBN
 books <- books %>%
   mutate(ISBN = gsub("[^0-9]", "", ISBN)) %>%
   filter(str_length(ISBN) == 10)
@@ -38,6 +24,14 @@ books <- books %>%
 ratings <- ratings %>%
   mutate(ISBN = gsub("[^0-9]", "", ISBN)) %>%
   filter(str_length(ISBN) == 10)
+
+# remove users who don't rated enough
+users_num_ratings <- ratings %>%
+  group_by(`User-ID`) %>%
+  summarise(bin = n()) %>%
+  filter(bin > 20)
+
+ratings <- ratings %>% semi_join(users_num_ratings, by = "User-ID")
 
 # get only the users, books, and ratings that have connections
 ratings <- ratings %>% semi_join(books, by = "ISBN")
@@ -47,7 +41,7 @@ books <- books %>% semi_join(ratings, by = "ISBN")
 ratings$`User-ID` <- as.factor(ratings$`User-ID`)
 ratings$ISBN <- as.factor(ratings$ISBN)
 
-rm(users, books)
+rm(users, users_num_ratings)
 gc()
 
 
@@ -69,23 +63,14 @@ gc()
 
 
 
-
+# return 5 ISBN books for each user
 train <- UI[1:1000]
 rec <- Recommender(train, method = "UBCF")
 pre <- predict(rec, UI[1001:1002], n = 5)
 
 
-
-
-
-
-
-
-
-
-
-
-
+scheme <- evaluationScheme(UI[1:1000], method = "cross-validation", k = 10, 
+                           given = -5, goodRating = 7)
 
 
 
