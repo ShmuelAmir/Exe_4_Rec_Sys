@@ -3,6 +3,8 @@
 # Date: 2023-06-05
 # Database name: data/BX-Book-Ratings_hkv1.sql, data/BX-Books_hkv1.sql, data/BX-Users_hkv1.sql
 
+# Database: MySQL, 'book_recommendations'
+
 ase name <name>
 3.a) how many users? 278858
 3.b) how many books? 270551
@@ -23,6 +25,7 @@ ase name <name>
  8     8  1371
  9     9  1175
 10    10  1049
+# אולי יותר שורות
 
 3.e) histogram of book-ratings <table(num ratings, num users)>
  (how many books have been rated N times? <number>)
@@ -39,6 +42,7 @@ ase name <name>
  8     8   3267
  9     9   2572
 10    10   2143
+# אולי יותר שורות
 
 
 3.f) top-10 rated books? <table(name,num ratings)>

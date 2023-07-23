@@ -9,7 +9,7 @@ library(crayon)
 # Load the data from the saved file
 load("recommender3.rdata")
 
-
+# 0 - unread book
 # ---------- Clean the data ---------- #
 
 # remove unneeded columns
@@ -41,6 +41,9 @@ books <- books %>% semi_join(ratings, by = "ISBN")
 ratings$`User-ID` <- as.factor(ratings$`User-ID`)
 ratings$ISBN <- as.factor(ratings$ISBN)
 
+# remove duplicate rows
+ratings <- ratings %>% distinct(`User-ID`, `ISBN`, .keep_all = TRUE)
+
 rm(users, users_num_ratings)
 gc()
 
@@ -61,23 +64,41 @@ UI <- new("realRatingMatrix", data = M)
 rm(M)
 gc()
 
+slotNames(UI)
+head(names(colCounts(UI)))
+
+vector_ratings <- as.vector(UI@data)
+
+# remove zeros
+vector_ratings <- vector_ratings[vector_ratings != 0]
+table(vector_ratings)
+hist(vector_ratings, main="Histogram of Ratings", xlab="Rating Value")
 
 
-# return 5 ISBN books for each user
-train <- UI[1:1000]
-rec <- Recommender(train, method = "UBCF")
-pre <- predict(rec, UI[1001:1002], n = 5)
+ratings <- UI[rowCounts(UI) > 50, colCounts(UI) > 100]
+dim(ratings)
 
 
-scheme <- evaluationScheme(UI[1:1000], method = "cross-validation", k = 10, 
-                           given = -5, goodRating = 7)
+#  -----------------return 5 ISBN books for each user - example on small data
+# train <- UI[1:1000]
+# rec <- Recommender(train, method = "UBCF")
+# pre <- predict(rec, UI[1001:1002], n = 5)
+# 
+# similarity(UI[1:50,], method = "cosine", which = "users", min_matching = 10)
+# 
+# scheme <- evaluationScheme(
+#   UI[1:1000], 
+#   method = "cross-validation", 
+#   k = 10, 
+#   given = -5, 
+#   goodRating = 7)
 
 
 
 
 
 
-
+#  ----------------- from the lab
 # R <- rle(colSums(M>0))
 # 
 # thresh <- 3
@@ -100,17 +121,84 @@ scheme <- evaluationScheme(UI[1:1000], method = "cross-validation", k = 10,
 
 # Train a model with holdout (k-fold)
 percent_train <- 0.8
-items_to_keep <- 2
-rating_threshold <- 6 # 3
-n_eval <- 5           # k
+given <- 2
+goodRating <- 5 
+k <- 1           
 
 eval_sets <- evaluationScheme(
   data = UI, method = "split",
-  train = percent_train, given = items_to_keep,
-  goodRating = rating_threshold, k = n_eval
+  train = percent_train, given = given,
+  goodRating = goodRating, k = k
 )
 
 # save(eval_sets, UI, M, nonzero.rows, R, ratings, file = "recommender3.rdata")
+
+# example from a tutorial
+# model_train_scheme <- UI %>%
+#   evaluationScheme(method = 'split', 
+#                    train = 0.8, 
+#                    given = 2,
+#                    goodRating = 6,
+#                    k = 1)
+# 
+# model_params <- list(method = "cosine",
+#                      nn = 10, # find each user's 10 most similar users.
+#                      sample = FALSE, # already did this.
+#                      normalize = "center")
+# 
+# model1 <- getData(model_train_scheme, "train") %>% 
+#   Recommender(method = "UBCF", parameter = model_params)
+# 
+# model1_pred <- predict(model1, getData(model_train_scheme, "known"), type = "ratings")
+
+
+# chatGPT
+
+
+batch_size <- 505
+
+num_rows <- nrow(UI)
+num_batches <- ceiling(num_rows / batch_size)
+
+all_predictions <- vector("list", num_batches)
+start <- Sys.time()
+print(num_batches)
+
+for (i in 1:num_batches) {
+  start_row <- (i - 1) * batch_size + 1
+  end_row <- min(i * batch_size, num_rows)
+  
+  current_batch <- UI[start_row:end_row, ]
+  
+  model <- Recommender(current_batch, method = "UBCF")
+  
+  predictions <- predict(model, current_batch)
+  
+  all_predictions[[i]] <- predictions
+  
+  end <- Sys.time()
+  print(paste("done for batch: ", i, "in ", end - start))
+  start <- end
+}
+
+final_predictions <- do.call(rbind, all_predictions)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # User Based
@@ -140,10 +228,10 @@ model <- eval_recommender@model
 
 normalize_data <- normalize(getData(eval_sets, "known"), method = model$normalize)
 
-U <- similarity(UI[1:4,], method = "cosine", which = "users")
-# U <- similarity(normalize_data, model$data, model$method, 
-#                 min_matching = model$min_matching_items, 
-#                 min_predictive = model$min_predictive_items)
+# U <- similarity(UI[1:4,], method = "cosine", which = "users")
+U <- similarity(normalize_data, model$data, model$method,
+                min_matching = model$min_matching_items,
+                min_predictive = model$min_predictive_items)
   
 # I <- similarity(
 #     newdata, model$data, method = model$method, min_matching = model$min_matching_items, 
@@ -151,8 +239,12 @@ U <- similarity(UI[1:4,], method = "cosine", which = "users")
 # )
   
 
+# check the model by confusion matrix????????????
+# show the confusion matrix from recommender lab - sum = num of non zero ratings
+# roc - reciver operating rate, calc from the matrix - לשחק עם החותך מה נחשב טוב ומה רע
+#    המהתנה goodRating  <- 5 
 
-# ---------- Predictions: ---------- # לעשות בחלקים לפי חלקים של מטריצת הדמיון
+# ---------- Predictions (for all users): ---------- # לעשות בחלקים לפי חלקים של מטריצת הדמיון
 
 items_to_recommend <- 10
 system.time(
