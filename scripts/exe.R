@@ -10,6 +10,22 @@ load("recommender3.rdata")
 # pdf("recommender.pdf")
 
 
+# ---------- Functions Definition ---------- #
+
+split_predict <- function(eval_recommender, eval_sets, items_to_recommend = 10) {
+  
+  normalized.data <- normalize(newData, method = model$normalize)
+  
+  similarity_matrix <- similarity(newdata, model$data, method = model$method,
+                                  min_matching = model$min_matching_items,
+                                  min_predictive = model$min_predictive_items
+  )
+  
+  
+  
+}
+
+
 # ---------- Create the matrices ---------- #
 
 # user-item rating matrix - reorganize ratings-df rows = users, cols = books, cells = rating
@@ -26,14 +42,6 @@ UI <- new("realRatingMatrix", data = M)
 rm(M, books)
 gc()
 
-# 
-# vector_ratings <- as.vector(UI@data)
-# 
-# # remove zeros
-# vector_ratings <- vector_ratings[vector_ratings != 0]
-# table(vector_ratings)
-# hist(vector_ratings, main="Histogram of Ratings", xlab="Rating Value")
-
 
 # removing less than 3 quantile
 row.threshold <- quantile(rowCounts(UI))[[2]]
@@ -49,26 +57,22 @@ UI.ratings.n <- normalize(UI.ratings)
 UI.ratings.n.vec <- as.vector(UI.ratings.n@data)
 UI.ratings.n.vec <- UI.ratings.n.vec[UI.ratings.n.vec != 0]
 
-hist(UI.ratings.n.vec, main = "Histogram of Normalized Ratings", xlab = "Rating")
-
-# UI.ratings.vec <- as.vector(UI.ratings@data)
-# UI.ratings.vec <- UI.ratings.vec[UI.ratings.vec != 0]
-# hist(UI.ratings.vec, main = "Histogram of Normalized Ratings", xlab = "Rating")
-# rm(UI.ratings.vec)
+hist(UI.ratings.n.vec, main = "Histogram of Normalized Ratings", xlab = "Normalized Rating")
 
 rm(UI.ratings.n, UI.ratings.n.vec, UI, row.threshold, col.threshold)
 gc()
+
 
 # ---------- The model ---------- #
 
 # Train a model with holdout (k-fold)
 eval_sets <- evaluationScheme(
   data = UI.ratings, 
-  method = "split",
+  method = "cross-validation",
   train = 0.8, 
-  given = 15,
-  goodRating = 5, 
-  k = 1
+  given = -1,
+  goodRating = 6, 
+  k = 5
 )
 
 # User Based
@@ -78,6 +82,67 @@ system.time(
     method = "UBCF", parameter = NULL
   )
 )
+
+model <- eval_recommender@model 
+sim_mtx <- similarity(
+  getData(eval_sets, "known"), 
+  model$data, 
+  method = model$method,
+  min_matching = model$min_matching_items, 
+  min_predictive = model$min_predictive_items
+)
+
+known.data <- getData(eval_sets, "known")
+
+num_rows <- nrow(known.data)
+batch_size <- num_rows / 10
+num_batches <- ceiling(num_rows / batch_size)
+
+all_predictions <- vector("list", num_batches)
+start <- Sys.time()
+
+for (i in 1:num_batches) {
+  start_row <- (i - 1) * batch_size + 1
+  end_row <- min(i * batch_size, num_rows)
+
+  current_batch <- known.data[start_row:end_row, ]
+
+  predictions <- predict(
+    eval_recommender,
+    current_batch,
+    n = 5,
+    type = "ratings"
+  )
+
+  # all_predictions[[i]] <- as(predictions, "matrix")
+  all_predictions[[i]] <- predictions
+
+  end <- Sys.time()
+  print(paste("done for batch:", i, "in", format(end - start)))
+  start <- end
+}
+
+# final_predictions <- do.call(rbind, all_predictions)
+final_predictions <- Reduce("+", all_predictions)
+
+
+# calcPredictionAccuracy myself 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ---------- Predictions (for all users): ---------- #
 
@@ -107,7 +172,7 @@ gc()
 
 system.time(
   item_eval_recommender <- Recommender(
-    data = train_set,
+    data = getData(eval_sets, "train"),
     method = "IBCF", parameter = NULL
   )
 )
@@ -115,14 +180,14 @@ system.time(
 system.time(
   item_eval_prediction <- predict(
     object = item_eval_recommender,
-    newdata = known_set,
+    newdata = getData(eval_sets, "known"),
     n = items_to_recommend,
     type = "ratings"
   )
 )
 
 item_eval_accuracy <- calcPredictionAccuracy(x = item_eval_prediction,
-                                        data = unknown_set,
+                                        data = getData(eval_sets, "unknown"),
                                         byUser = TRUE)
 head(item_eval_accuracy)
 
@@ -159,7 +224,8 @@ dev.off()
 # get new book ISBN
 
 # give recommendation - for the user to the new book
-
+# take a random user and run:
+# getList(predict_result)
 
 
 
