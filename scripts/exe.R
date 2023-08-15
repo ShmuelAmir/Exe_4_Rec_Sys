@@ -1,3 +1,6 @@
+# shmuel amir 316392323
+# github link: https://github.com/ShmuelAmir/Exe_4_Rec_Sys
+
 library(dplyr)
 library(ggplot2)
 library(recommenderlab)
@@ -7,7 +10,7 @@ library(tidyverse)
 
 # Load the data from the saved file
 load("recommender3.rdata")
-# pdf("recommender.pdf")
+pdf("recommender.pdf")
 
 
 # ---------- Create the matrices ---------- #
@@ -199,9 +202,9 @@ TPR <- c(data_df$TPR)
 FPR <- c(data_df$FPR)
 Precision <- c(data_df$Precision)
 
-i <- 0
+i <- 1
 while (i  < length(data_df$param)) {
-  param[i] <- p
+  param[i] <- data_df$param[[i]]
   i = i + 1
 }
 
@@ -234,20 +237,26 @@ df %>%
 
 # ---------- Predictions (for all users): ---------- #
 
-# get user recommendations for 500 books
+# get user recommendations and predict more books for him
+eval_recommender <- Recommender(
+  data = train.data, method = "RANDOM", parameter = NULL
+)
 
-# get new book ISBN
+rnd_idx <- sample(1:dim(known.data)[[1]], 1, replace=FALSE)
+predictions <- predict(
+  eval_recommender,
+  known.data[rnd_idx],
+  n = 10,
+)
 
-# give recommendation - for the user to the new book
-# take a random user and run:
-# getList(predict_result)
-
-
+isbns <- getList(predictions)
 
 # get the titles of the books
+load("recommender3.rdata")
+
+books %>%
+  filter(ISBN %in% as.vector(isbns$`0`))
+
 
 dev.off()
-
-
-
 
