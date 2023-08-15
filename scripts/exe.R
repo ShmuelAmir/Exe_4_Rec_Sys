@@ -1,29 +1,13 @@
 library(dplyr)
 library(ggplot2)
-#library(knitr)
 library(recommenderlab)
 library(crayon)
+library(tidyverse)
 
 
 # Load the data from the saved file
 load("recommender3.rdata")
 # pdf("recommender.pdf")
-
-
-# ---------- Functions Definition ---------- #
-
-split_predict <- function(eval_recommender, eval_sets, items_to_recommend = 10) {
-  
-  normalized.data <- normalize(newData, method = model$normalize)
-  
-  similarity_matrix <- similarity(newdata, model$data, method = model$method,
-                                  min_matching = model$min_matching_items,
-                                  min_predictive = model$min_predictive_items
-  )
-  
-  
-  
-}
 
 
 # ---------- Create the matrices ---------- #
@@ -39,7 +23,7 @@ M <- sparseMatrix(
 
 UI <- new("realRatingMatrix", data = M)
 
-rm(M, books)
+rm(M, books, users)
 gc()
 
 
@@ -59,7 +43,8 @@ UI.ratings.n.vec <- UI.ratings.n.vec[UI.ratings.n.vec != 0]
 
 hist(UI.ratings.n.vec, main = "Histogram of Normalized Ratings", xlab = "Normalized Rating")
 
-rm(UI.ratings.n, UI.ratings.n.vec, UI, row.threshold, col.threshold)
+save(ratings, UI.ratings, file = "temp.rdata")
+rm(ratings, UI.ratings.n, UI.ratings.n.vec, UI, row.threshold, col.threshold)
 gc()
 
 
@@ -75,151 +60,181 @@ eval_sets <- evaluationScheme(
   k = 5
 )
 
-# User Based
-system.time(
-  eval_recommender <- Recommender(
-    data = getData(eval_sets, "train"),
-    method = "UBCF", parameter = NULL
-  )
-)
-
-model <- eval_recommender@model 
-sim_mtx <- similarity(
-  getData(eval_sets, "known"), 
-  model$data, 
-  method = model$method,
-  min_matching = model$min_matching_items, 
-  min_predictive = model$min_predictive_items
-)
 
 known.data <- getData(eval_sets, "known")
+train.data <- getData(eval_sets, "train")
+unknown_data <- as(getData(eval_sets, "unknown"), "matrix")
+
+load("temp.rdata")
+save(ratings, UI.ratings, eval_sets, file = "temp.rdata")
+rm(ratings, UI.ratings, eval_sets)
+gc()
+
+
+# ---------- functions ---------- #
 
 num_rows <- nrow(known.data)
 batch_size <- num_rows / 10
 num_batches <- ceiling(num_rows / batch_size)
 
-all_predictions <- vector("list", num_batches)
-start <- Sys.time()
 
-for (i in 1:num_batches) {
-  start_row <- (i - 1) * batch_size + 1
-  end_row <- min(i * batch_size, num_rows)
-
-  current_batch <- known.data[start_row:end_row, ]
-
-  predictions <- predict(
-    eval_recommender,
-    current_batch,
-    n = 5,
-    type = "ratings"
+# my.evaluate a method with n recommendations by splitting the matrix
+my.recommender <- function(method, param) {
+  system.time(
+    eval_recommender <- Recommender(
+      data = train.data, method = method, parameter = param
+    )
   )
-
-  # all_predictions[[i]] <- as(predictions, "matrix")
-  all_predictions[[i]] <- predictions
-
-  end <- Sys.time()
-  print(paste("done for batch:", i, "in", format(end - start)))
-  start <- end
+    
+  return(eval_recommender)
 }
 
-# final_predictions <- do.call(rbind, all_predictions)
-final_predictions <- Reduce("+", all_predictions)
+
+my.evaluate <- function(eval_recommender, n, method, param) {
+  all_predictions <- vector("list", num_batches)
+  
+  start <- Sys.time()
+  for (i in 1:num_batches) {
+    start_row <- (i - 1) * batch_size + 1
+    end_row <- min(i * batch_size, num_rows)
+    
+    current_batch <- known.data[start_row:end_row, ]
+    
+    predictions <- predict(
+      eval_recommender,
+      current_batch,
+      n = n,
+      type = "ratings"
+    )
+    
+    all_predictions[[i]] <- as(predictions, "matrix")
+    
+    end <- Sys.time()
+    print(paste("method:", method, "n:", n, "batch:", i, "time:", format(end - start)))
+    start <- end
+  }
+  
+  final_predictions <- do.call(rbind, all_predictions)
+  
+  
+  # calculate metrics
+  TP <- 0
+  FP <- 0
+  FN <- 0
+  TN <- 0
+  
+  
+  rows <- dim(final_predictions)[[1]]
+  cols <- dim(final_predictions)[[2]]
+  
+  for (i in 1:rows) {
+    for (j in 1:cols) {
+      curr_org <- unknown_data[i,j]
+      curr_pred <- final_predictions[i,j]
+      
+      
+      if (is.na(curr_org) || is.na(curr_pred)) {
+        next
+      }
+      
+      
+      if (curr_org > 5 & curr_pred > 5) {
+        TP = TP + 1
+      } else if (curr_org <= 5 & curr_pred <= 5) {
+        TN = TN + 1
+      } else if (curr_org > 5 & curr_pred <= 5) {
+        FN = FN + 1
+      } else if (curr_org <= 5 & curr_pred > 5) {
+        FP = FP + 1
+      }
+    }
+  }
+  
+  
+  TPR <- TP / (TP + FN) # Recall
+  FPR <- FP / (FP + TN)
+  Precision <- TP / (TP + FP)
+  return(list(method, n, param, TPR, FPR, Precision))
+}
 
 
-# calcPredictionAccuracy myself 
+# evaluate a list of methods for different numbers of books
+
+models_to_evaluate <- list(
+  # list(name = "IBCF", param = list(method = "cosine")),
+  # list(name = "IBCF", param = list(method = "pearson")),
+  list(name = "UBCF", param = list(method = "cosine")),
+  list(name = "UBCF", param = list(method = "pearson")),
+  list(name = "RANDOM", param = NULL) 
+)
+
+n_recommendations <- c(1, 3, 5, 10, 15, 20)
+
+result <- list()
+
+for (model in models_to_evaluate) {
+  rec <- my.recommender(model$name, model$param)
+  
+  for (n in n_recommendations) {
+    result <- append(result, my.evaluate(rec, n, model$name, model$param))
+  }
+}
 
 
+# create data.frame from the list
+col_num <- 6
+row_num <- length(result) / col_num
+
+data_matrix <- matrix(result, ncol = col_num, byrow = TRUE)
+colnames(data_matrix) <- c("method", "n", "param", "TPR", "FPR", "Precision")
+
+data_df <- as.data.frame(data_matrix, row.names = NULL)
+data_df <- lapply(data_df, function(x) c(unlist(x)))
 
 
+method <- c(data_df$method)
+n <- c(data_df$n)
+param <- vector("character", length(data_df$TPR))
+TPR <- c(data_df$TPR)
+FPR <- c(data_df$FPR)
+Precision <- c(data_df$Precision)
 
+i <- 0
+while (i  < length(data_df$param)) {
+  param[i] <- p
+  i = i + 1
+}
 
+df <- data.frame(
+  method = as.factor(method),
+  n,
+  param = as.factor(param),
+  TPR,
+  FPR,
+  Precision
+)
 
+# Draw ROC curve
+df %>%
+  ggplot(aes(FPR, TPR, colour = method)) +
+  geom_line() +
+  geom_label(aes(label = n)) +
+  labs(title = "ROC curves", colour = "Model") +
+  theme_grey(base_size = 14)
 
-
-
-
-
-
-
+# Draw precision / recall curve
+df %>%
+  ggplot(aes(TPR, Precision, colour = method)) +
+  geom_line() +
+  geom_label(aes(label = n))  +
+  labs(title = "Precision-Recall curves", colour = "Model") +
+  theme_grey(base_size = 14)
 
 
 
 # ---------- Predictions (for all users): ---------- #
 
 # get user recommendations for 500 books
-items_to_recommend <- 10
-system.time(
-  eval_prediction <- predict(
-    object = eval_recommender,
-    newdata = getData(eval_sets, "known"),
-    n = items_to_recommend,
-    type = "ratings"
-  )
-)
-
-eval_accuracy <- calcPredictionAccuracy(x = eval_prediction,
-                                        data = getData(eval_sets, "unknown"),
-                                        byUser = TRUE)
-head(eval_accuracy)
-
-
-save(eval_accuracy, eval_prediction, eval_recommender, UI.ratings, ratings, file = "recommender3.2.rdata")
-rm(eval_accuracy, eval_prediction, eval_recommender, UI.ratings, ratings)
-gc()
-
-
-# Item Based
-
-system.time(
-  item_eval_recommender <- Recommender(
-    data = getData(eval_sets, "train"),
-    method = "IBCF", parameter = NULL
-  )
-)
-
-system.time(
-  item_eval_prediction <- predict(
-    object = item_eval_recommender,
-    newdata = getData(eval_sets, "known"),
-    n = items_to_recommend,
-    type = "ratings"
-  )
-)
-
-item_eval_accuracy <- calcPredictionAccuracy(x = item_eval_prediction,
-                                        data = getData(eval_sets, "unknown"),
-                                        byUser = TRUE)
-head(item_eval_accuracy)
-
-
-# evaluate some models
-models_to_evaluate <- list(IBCF_cos = list(name = "IBCF", param = list(method = "cosine")),
-                           IBCF_cor = list(name = "IBCF", param = list(method = "pearson")),
-                           UBCF_cos = list(name = "UBCF", param = list(method = "cosine")),
-                           UBCF_cor = list(name = "UBCF", param = list(method = "pearson")),
-                           random   = list(name = "RANDOM", param = NULL) 
-)
-
-n_recommendations <- c(1, 3, 5, 10, 15, 20)
-results <- evaluate(x = eval_sets, method = models_to_evaluate, n = n_recommendations)
-
-# Draw ROC curve
-plot(results, y = "ROC", annotate = 1, legend="topleft")
-title("ROC Curve")
-
-# Draw precision / recall curve
-plot(results, y = "prec/rec", annotate=1)
-title("Precision-Recall")
-
-
-dev.off()
-
-
-# check the model by confusion matrix????????????
-# show the confusion matrix from recommender lab - sum = num of non zero ratings
-# roc - reciver operating rate, calc from the matrix
-
-
 
 # get new book ISBN
 
@@ -230,4 +245,9 @@ dev.off()
 
 
 # get the titles of the books
+
+dev.off()
+
+
+
 
